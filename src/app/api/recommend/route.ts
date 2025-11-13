@@ -22,7 +22,14 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        temperature: 0.9,
+        topP: 0.95,
+        maxOutputTokens: 1024,
+      },
+    });
 
     const prompt = `あなたは天王洲アイルエリアのランチに詳しい、ユーモアあふれるグルメアドバイザーです。
 少しエンタメ要素を加えて、楽しく面白い提案をしてください。
@@ -55,6 +62,7 @@ export async function POST(request: NextRequest) {
 - 少し大げさな表現や、クスッと笑えるような要素を入れてください
 - ただし、お店やカレーに対する敬意は忘れずに`;
 
+    // AIリクエスト
     const result = await model.generateContent(prompt);
     const response = result.response;
     const text = response.text();
@@ -76,9 +84,23 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(recommendation);
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error details:", error);
+    
+    // エラーの詳細を取得
+    let errorMessage = "レコメンデーションの生成に失敗しました";
+    let errorDetails = "";
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      errorDetails = error.stack || "";
+    }
+    
     return NextResponse.json(
-      { error: "レコメンデーションの生成に失敗しました" },
+      { 
+        error: errorMessage,
+        details: errorDetails,
+        hint: "APIキーが正しく設定されているか、Gemini APIが利用可能か確認してください"
+      },
       { status: 500 }
     );
   }

@@ -58,17 +58,43 @@ npm run dev
    - Vercelダッシュボードから「Add New Project」をクリック
    - GitHubリポジトリを接続してインポート
 
-3. **環境変数の設定**
-   - プロジェクト設定で「Environment Variables」を開く
+3. **環境変数の設定** ⚠️ 重要
+   - Vercelダッシュボードでプロジェクトを選択
+   - 「Settings」タブ → 「Environment Variables」を開く
    - 以下の環境変数を追加：
-     ```
-     GEMINI_API_KEY=your_api_key_here
-     ```
-   - Production、Preview、Developmentすべての環境に適用
+     - **Name**: `GEMINI_API_KEY`
+     - **Value**: あなたのGemini APIキー（[Google AI Studio](https://aistudio.google.com/app/apikey)で取得）
+     - **Environment**: Production、Preview、Development すべてにチェック
+   - 「Save」をクリック
+   
+   > **注意**: `vercel.json`には環境変数を記載しません。必ずVercelダッシュボードで設定してください。
 
 4. **デプロイ**
-   - 「Deploy」ボタンをクリック
+   - 環境変数を設定後、「Deployments」タブに戻る
+   - 「Redeploy」をクリック（環境変数を反映させるため）
    - 数分でデプロイが完了します
+
+#### 環境変数のトラブルシューティング
+
+もし`GEMINI_API_KEY`が読み込まれない場合：
+
+1. **Vercelダッシュボードで確認**
+   ```
+   Project Settings → Environment Variables → GEMINI_API_KEY が存在するか確認
+   ```
+
+2. **すべての環境にチェックが入っているか確認**
+   - ✅ Production
+   - ✅ Preview  
+   - ✅ Development
+
+3. **再デプロイ**
+   - 環境変数を追加・変更した後は必ず再デプロイが必要です
+   - Deployments → 最新のデプロイの「...」→「Redeploy」
+
+4. **ログで確認**
+   - Deployments → デプロイを選択 → 「Build Logs」で確認
+   - `GEMINI_API_KEY`が undefined の場合は環境変数が設定されていません
 
 #### 自動デプロイ
 
