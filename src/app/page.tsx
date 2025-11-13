@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 type Recommendation = {
   name: string;
@@ -24,6 +24,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RecommendationResponse | null>(null);
   const [error, setError] = useState("");
+  const [canRequest, setCanRequest] = useState(true);
+  const [remainingTime, setRemainingTime] = useState<string>("");
 
   const moods = [
     { value: "元気いっぱい", emoji: "😄", color: "bg-yellow-100 hover:bg-yellow-200" },
@@ -42,8 +44,73 @@ export default function Home() {
     { value: "寒い", emoji: "🥶", color: "bg-cyan-100 hover:bg-cyan-200" },
   ];
 
+  // クッキーから最終リクエスト日付を取得
+  const getLastRequestDate = useCallback((): string | null => {
+    if (typeof document === "undefined") return null;
+    const cookies = document.cookie.split("; ");
+    const lastRequestCookie = cookies.find((row) =>
+      row.startsWith("lastRequestDate=")
+    );
+    if (lastRequestCookie) {
+      return lastRequestCookie.split("=")[1];
+    }
+    return null;
+  }, []);
+
+  // クッキーに最終リクエスト日付を保存
+  const setLastRequestDate = () => {
+    const today = new Date();
+    const dateString = today.toLocaleDateString("ja-JP"); // YYYY/MM/DD形式
+    // 翌日の0時までの有効期限を設定
+    const tomorrow = new Date();
+    tomorrow.setHours(24, 0, 0, 0);
+    document.cookie = `lastRequestDate=${dateString}; expires=${tomorrow.toUTCString()}; path=/; SameSite=Strict`;
+  };
+
+  // リクエスト可能かチェック
+  const checkCanRequest = useCallback(() => {
+    const lastRequestDate = getLastRequestDate();
+    const today = new Date().toLocaleDateString("ja-JP");
+
+    if (!lastRequestDate || lastRequestDate !== today) {
+      setCanRequest(true);
+      setRemainingTime("");
+      return;
+    }
+
+    // 同じ日付の場合は制限
+    setCanRequest(false);
+    
+    // 翌日0時までの残り時間を計算
+    const now = new Date();
+    const tomorrow = new Date();
+    tomorrow.setHours(24, 0, 0, 0);
+    const remainingMs = tomorrow.getTime() - now.getTime();
+    const hours = Math.floor(remainingMs / (60 * 60 * 1000));
+    const minutes = Math.floor(
+      (remainingMs % (60 * 60 * 1000)) / (60 * 1000)
+    );
+    setRemainingTime(`${hours}時間${minutes}分`);
+  }, [getLastRequestDate]);
+
+  // 初回マウント時とタイマーでチェック
+  useEffect(() => {
+    checkCanRequest();
+    const interval = setInterval(checkCanRequest, 60000); // 1分ごとにチェック
+    return () => clearInterval(interval);
+  }, [checkCanRequest]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // リクエスト制限チェック
+    if (!canRequest) {
+      setError(
+        `本日の利用回数に達しました。次回は${remainingTime}後にご利用いただけます。`
+      );
+      return;
+    }
+
     setLoading(true);
     setError("");
     setResult(null);
@@ -63,6 +130,11 @@ export default function Home() {
 
       const data = await response.json();
       setResult(data);
+      
+      // リクエスト成功時にクッキーを設定
+      setLastRequestDate();
+      setCanRequest(false);
+      checkCanRequest();
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました");
     } finally {
@@ -111,10 +183,10 @@ export default function Home() {
             </div>
 
             {/* 気分選択 */}
-            <div>
-              <label className="block text-xl font-semibold text-gray-800 mb-4">
+            <fieldset>
+              <legend className="block text-xl font-semibold text-gray-800 mb-4">
                 今日の気分は？
-              </label>
+              </legend>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {moods.map((m) => (
                   <button
@@ -134,13 +206,13 @@ export default function Home() {
                   </button>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             {/* 天気選択 */}
-            <div>
-              <label className="block text-xl font-semibold text-gray-800 mb-4">
+            <fieldset>
+              <legend className="block text-xl font-semibold text-gray-800 mb-4">
                 今日の天気は？
-              </label>
+              </legend>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {weathers.map((w) => (
                   <button
@@ -160,16 +232,28 @@ export default function Home() {
                   </button>
                 ))}
               </div>
-            </div>
+            </fieldset>
+
+            {/* 利用制限メッセージ */}
+            {!canRequest && (
+              <div className="p-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl">
+                <p className="text-yellow-800 font-semibold text-center">
+                  ⏰ 本日の利用回数に達しました
+                </p>
+                <p className="text-yellow-700 text-sm text-center mt-2">
+                  次回は{remainingTime}後にご利用いただけます
+                </p>
+              </div>
+            )}
 
             {/* 送信ボタン */}
             <div className="flex gap-4">
               <button
                 type="submit"
-                disabled={!name || !mood || !weather || loading}
+                disabled={!name || !mood || !weather || loading || !canRequest}
                 className="flex-1 bg-blue-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? "AIが考え中..." : "おすすめを教えて！"}
+                {loading ? "AIが考え中..." : canRequest ? "おすすめを教えて！" : "本日の利用回数に達しました"}
               </button>
               {(name || mood || weather || result) && (
                 <button
@@ -201,11 +285,13 @@ export default function Home() {
                   🎯 本日のおすすめランチ
                 </h2>
                 <button
+                  type="button"
                   onClick={() => setResult(null)}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                   aria-label="閉じる"
                 >
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <title>閉じる</title>
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -277,6 +363,7 @@ export default function Home() {
               {/* モーダルフッター */}
               <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 rounded-b-2xl">
                 <button
+                  type="button"
                   onClick={() => setResult(null)}
                   className="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-xl font-semibold transition-colors"
                 >
