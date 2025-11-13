@@ -191,71 +191,98 @@ export default function Home() {
           )}
         </div>
 
-        {/* 結果表示 */}
+        {/* モーダル */}
         {result && (
-          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 animate-fadeIn">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-              🎯 本日のおすすめランチ
-            </h2>
-            
-            {result.message && (
-              <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
-                <p className="text-gray-800 text-lg leading-relaxed whitespace-pre-line">{result.message}</p>
-              </div>
-            )}
-
-            <div className="p-6 border-2 border-orange-300 rounded-xl bg-gradient-to-br from-orange-50 to-yellow-50 shadow-lg">
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="text-2xl font-bold text-gray-800">
-                  {result.recommendation.name}
-                </h3>
-                <span className="px-4 py-2 bg-orange-500 text-white rounded-full text-sm font-bold shadow-md">
-                  {result.recommendation.cuisine}
-                </span>
-              </div>
-              
-              <div className="mb-4 p-4 bg-white rounded-lg border border-orange-200">
-                <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
-                  <span>✨</span> おすすめの理由
-                </h4>
-                <p className="text-gray-700 leading-relaxed">
-                  {result.recommendation.reason}
-                </p>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fadeIn">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              {/* モーダルヘッダー */}
+              <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between rounded-t-2xl">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  🎯 本日のおすすめランチ
+                </h2>
+                <button
+                  onClick={() => setResult(null)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label="閉じる"
+                >
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
 
-              <div className="mb-4 p-4 bg-white rounded-lg border border-orange-200">
-                <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
-                  <span>🏠</span> 雰囲気
-                </h4>
-                <p className="text-gray-700 leading-relaxed">
-                  {result.recommendation.atmosphere}
-                </p>
-              </div>
+              {/* モーダルコンテンツ */}
+              <div className="p-6">
+                {result.message && (
+                  <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
+                    <p className="text-gray-800 text-lg leading-relaxed whitespace-pre-line">{result.message}</p>
+                  </div>
+                )}
 
-              <div className="mb-4 p-4 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg border-2 border-orange-300 shadow-md">
-                <h4 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
-                  <span>🍛</span> 本日のおすすめメニュー
-                </h4>
-                <p className="text-xl font-bold text-orange-600">
-                  {result.recommendation.recommendedMenu}
-                </p>
-              </div>
-              
-              <div className="flex flex-wrap gap-4 mb-4">
-                <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg border border-orange-200">
-                  <span className="font-semibold text-gray-600">💰 価格帯:</span>
-                  <span className="text-gray-800 font-medium">{result.recommendation.priceRange}</span>
+                <div className="p-6 border-2 border-orange-300 rounded-xl bg-gradient-to-br from-orange-50 to-yellow-50 shadow-lg">
+                  <div className="flex items-start justify-between mb-4">
+                    <h3 className="text-2xl font-bold text-gray-800">
+                      {result.recommendation.name}
+                    </h3>
+                    <span className="px-4 py-2 bg-orange-500 text-white rounded-full text-sm font-bold shadow-md">
+                      {result.recommendation.cuisine}
+                    </span>
+                  </div>
+                  
+                  <div className="mb-4 p-4 bg-white rounded-lg border border-orange-200">
+                    <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
+                      <span>✨</span> おすすめの理由
+                    </h4>
+                    <p className="text-gray-700 leading-relaxed">
+                      {result.recommendation.reason}
+                    </p>
+                  </div>
+
+                  <div className="mb-4 p-4 bg-white rounded-lg border border-orange-200">
+                    <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
+                      <span>🏠</span> 雰囲気
+                    </h4>
+                    <p className="text-gray-700 leading-relaxed">
+                      {result.recommendation.atmosphere}
+                    </p>
+                  </div>
+
+                  <div className="mb-4 p-4 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg border-2 border-orange-300 shadow-md">
+                    <h4 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
+                      <span>🍛</span> 本日のおすすめメニュー
+                    </h4>
+                    <p className="text-xl font-bold text-orange-600">
+                      {result.recommendation.recommendedMenu}
+                    </p>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-4 mb-4">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg border border-orange-200">
+                      <span className="font-semibold text-gray-600">💰 価格帯:</span>
+                      <span className="text-gray-800 font-medium">{result.recommendation.priceRange}</span>
+                    </div>
+                  </div>
+
+                  <a
+                    href={result.recommendation.map}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full bg-orange-500 hover:bg-orange-600 text-white text-center py-4 px-6 rounded-xl font-bold text-lg transition-colors shadow-md"
+                  >
+                    📍 Google マップで見る
+                  </a>
                 </div>
               </div>
 
-              <a
-                href={result.recommendation.map}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full bg-orange-500 hover:bg-orange-600 text-white text-center py-4 px-6 rounded-xl font-bold text-lg transition-colors shadow-md"
-              >
-                📍 Google マップで見る
-              </a>
+              {/* モーダルフッター */}
+              <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 rounded-b-2xl">
+                <button
+                  onClick={() => setResult(null)}
+                  className="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-xl font-semibold transition-colors"
+                >
+                  閉じる
+                </button>
+              </div>
             </div>
           </div>
         )}
