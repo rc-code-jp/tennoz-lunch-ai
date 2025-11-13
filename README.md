@@ -4,20 +4,26 @@
 
 ## 🌟 機能
 
+- **名前入力**: あなたの名前を入力してパーソナライズされた体験
 - **気分選択**: 元気いっぱい、リラックス、疲れている、冒険したい、ヘルシー志向、がっつり食べたい
 - **天気選択**: 晴れ、曇り、雨、暑い、寒い
-- **AIレコメンデーション**: Gemini AIが気分と天気を考慮して最適なランチを3つ提案
-- **詳細情報**: レストラン名、料理ジャンル、おすすめの理由、価格帯、雰囲気
+- **AIレコメンデーション**: Gemini AIが気分と天気を考慮して、ユーモアあふれる提案
+- **固定レストラン**: カナピナ 天王洲アイル店（インドカレー）
+- **おすすめメニュー**: カレー味のガパオライス
+- **詳細情報**: おすすめの理由、雰囲気、価格帯、Google マップリンク
+- **モーダル表示**: 結果を見やすいモーダルで表示
 
 ## 🚀 セットアップ
 
-### 1. 依存関係のインストール
+### ローカル開発
+
+#### 1. 依存関係のインストール
 
 ```bash
 npm install
 ```
 
-### 2. 環境変数の設定
+#### 2. 環境変数の設定
 
 プロジェクトルートに `.env.local` ファイルを作成し、Gemini API キーを設定してください：
 
@@ -31,7 +37,7 @@ GEMINI_API_KEY=your_api_key_here
 3. "Create API Key" をクリックしてAPIキーを生成
 4. 生成されたAPIキーをコピーして `.env.local` に貼り付け
 
-### 3. 開発サーバーの起動
+#### 3. 開発サーバーの起動
 
 ```bash
 npm run dev
@@ -39,12 +45,56 @@ npm run dev
 
 ブラウザで [http://localhost:3000](http://localhost:3000) を開いてください。
 
+### Vercelへのデプロイ
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/tennoz-lunch-ai)
+
+#### 手動デプロイ手順
+
+1. **Vercelアカウントの作成**
+   - [Vercel](https://vercel.com) にアクセスしてアカウントを作成
+
+2. **プロジェクトのインポート**
+   - Vercelダッシュボードから「Add New Project」をクリック
+   - GitHubリポジトリを接続してインポート
+
+3. **環境変数の設定**
+   - プロジェクト設定で「Environment Variables」を開く
+   - 以下の環境変数を追加：
+     ```
+     GEMINI_API_KEY=your_api_key_here
+     ```
+   - Production、Preview、Developmentすべての環境に適用
+
+4. **デプロイ**
+   - 「Deploy」ボタンをクリック
+   - 数分でデプロイが完了します
+
+#### 自動デプロイ
+
+GitHubにプッシュすると自動的にVercelにデプロイされます：
+
+- `main`ブランチへのプッシュ → 本番環境にデプロイ
+- その他のブランチへのプッシュ → プレビュー環境にデプロイ
+
+#### デプロイ設定
+
+プロジェクトには `vercel.json` が含まれており、以下の設定が自動的に適用されます：
+
+- **フレームワーク**: Next.js
+- **ビルドコマンド**: `npm run build`
+- **出力ディレクトリ**: `.next`
+- **インストールコマンド**: `npm install`
+
+詳細は [Vercel Documentation](https://vercel.com/docs) を参照してください。
+
 ## 🛠️ 技術スタック
 
 - **フレームワーク**: Next.js 16 (App Router)
 - **言語**: TypeScript
 - **スタイリング**: Tailwind CSS 4
-- **AI**: Google Gemini AI (gemini-1.5-flash)
+- **AI**: Google Gemini AI (gemini-2.5-flash)
+- **デプロイ**: Vercel
 - **リンター/フォーマッター**: Biome
 
 ## 📁 プロジェクト構造
