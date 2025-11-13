@@ -57,6 +57,26 @@ export default function Home() {
     return null;
   }, []);
 
+  // クッキーから保存された結果を取得
+  const getSavedResult = useCallback((): RecommendationResponse | null => {
+    if (typeof document === "undefined") return null;
+    const cookies = document.cookie.split("; ");
+    const resultCookie = cookies.find((row) =>
+      row.startsWith("savedResult=")
+    );
+    if (resultCookie) {
+      try {
+        const encodedResult = resultCookie.split("=")[1];
+        const decodedResult = decodeURIComponent(encodedResult);
+        return JSON.parse(decodedResult);
+      } catch (e) {
+        console.error("Failed to parse saved result:", e);
+        return null;
+      }
+    }
+    return null;
+  }, []);
+
   // クッキーに最終リクエスト日付を保存
   const setLastRequestDate = () => {
     const today = new Date();
@@ -65,6 +85,14 @@ export default function Home() {
     const tomorrow = new Date();
     tomorrow.setHours(24, 0, 0, 0);
     document.cookie = `lastRequestDate=${dateString}; expires=${tomorrow.toUTCString()}; path=/; SameSite=Strict`;
+  };
+
+  // クッキーに結果を保存
+  const saveResult = (data: RecommendationResponse) => {
+    const tomorrow = new Date();
+    tomorrow.setHours(24, 0, 0, 0);
+    const encodedResult = encodeURIComponent(JSON.stringify(data));
+    document.cookie = `savedResult=${encodedResult}; expires=${tomorrow.toUTCString()}; path=/; SameSite=Strict`;
   };
 
   // リクエスト可能かチェック
@@ -96,9 +124,16 @@ export default function Home() {
   // 初回マウント時とタイマーでチェック
   useEffect(() => {
     checkCanRequest();
+    
+    // 保存された結果を読み込む
+    const savedResult = getSavedResult();
+    if (savedResult) {
+      setResult(savedResult);
+    }
+    
     const interval = setInterval(checkCanRequest, 60000); // 1分ごとにチェック
     return () => clearInterval(interval);
-  }, [checkCanRequest]);
+  }, [checkCanRequest, getSavedResult]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,6 +168,7 @@ export default function Home() {
       
       // リクエスト成功時にクッキーを設定
       setLastRequestDate();
+      saveResult(data); // 結果を保存
       setCanRequest(false);
       checkCanRequest();
     } catch (err) {
@@ -177,7 +213,7 @@ export default function Home() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="例: 太郎"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-lg"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-lg text-gray-800"
                 required
               />
             </div>
@@ -243,6 +279,15 @@ export default function Home() {
                 <p className="text-yellow-700 text-sm text-center mt-2">
                   次回は{remainingTime}後にご利用いただけます
                 </p>
+                {result && (
+                  <button
+                    type="button"
+                    onClick={() => setResult(result)}
+                    className="mt-3 w-full bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
+                  >
+                    📋 本日の結果を見る
+                  </button>
+                )}
               </div>
             )}
 
@@ -277,8 +322,8 @@ export default function Home() {
 
         {/* モーダル */}
         {result && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fadeIn">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end md:items-center justify-center p-4 z-50 animate-fadeIn">
+            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-slideUpFade">
               {/* モーダルヘッダー */}
               <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between rounded-t-2xl">
                 <h2 className="text-2xl font-bold text-gray-800">
