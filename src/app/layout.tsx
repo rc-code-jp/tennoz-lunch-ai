@@ -15,6 +15,26 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "天王洲アイルランチAI - AIがおすすめのランチを提案",
   description: "あなたの気分と天気から、天王洲アイルエリアで最適なランチをAIが提案します。",
+  openGraph: {
+    title: "天王洲アイルランチAI - AIがおすすめのランチを提案",
+    description: "あなたの気分と天気から、天王洲アイルエリアで最適なランチをAIが提案します。",
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "天王洲アイルランチAI",
+      },
+    ],
+    locale: "ja_JP",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "天王洲アイルランチAI - AIがおすすめのランチを提案",
+    description: "あなたの気分と天気から、天王洲アイルエリアで最適なランチをAIが提案します。",
+    images: ["/og-image.jpg"],
+  },
 };
 
 export default function RootLayout({
