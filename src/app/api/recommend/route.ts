@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     "reason": "${name}さんの気分「${mood}」と天気「${weather}」を考慮した、ユーモアのある楽しいおすすめの理由を2-3文で書いてください",
     "priceRange": "1000-1500円",
     "atmosphere": "お店の雰囲気を面白く魅力的に2-3文で説明してください",
-    "map": "https://maps.app.goo.gl/L4yV8g7auS3d0lrDO",
+    "map": "https://www.google.com/maps/place/%E3%82%AB%E3%83%8A%E3%83%94%E3%83%8A+%E5%A4%A9%E7%8E%8B%E6%B4%B2%E3%82%A2%E3%82%A4%E3%83%AB%E5%BA%97+Khanapina+Tennozu+Isle/@35.624156,139.750682,17z/data=!3m1!4b1!4m6!3m5!1s0x60188a6a97d018c5:0x2a58845a920399b!8m2!3d35.624156!4d139.750682!16s%2Fg%2F1td4k2y5?entry=tts&g_ep=EgoyMDI1MTExMS4wIPu8ASoASAFQAw%3D%3D&skid=6c1cd6d8-ab4c-4f68-80ef-876cab7e667a",
     "recommendedMenu": "カレー味のガパオライス"
   },
   "message": "こんにちは${name}さん！で始まる、カレーへの期待が高まる楽しいメッセージを3-4文で書いてください"
