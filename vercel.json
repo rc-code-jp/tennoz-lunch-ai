@@ -3,9 +3,6 @@
   "outputDirectory": ".next",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "framework": "nextjs",
-  "env": {
-    "GEMINI_API_KEY": "@gemini_api_key"
-  }
+  "framework": "nextjs"
 }
 
