@@ -1,65 +1,270 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+
+type Recommendation = {
+  name: string;
+  cuisine: string;
+  reason: string;
+  priceRange: string;
+  atmosphere: string;
+  map: string;
+  recommendedMenu: string;
+};
+
+type RecommendationResponse = {
+  recommendation: Recommendation;
+  message: string;
+};
 
 export default function Home() {
+  const [name, setName] = useState("");
+  const [mood, setMood] = useState("");
+  const [weather, setWeather] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<RecommendationResponse | null>(null);
+  const [error, setError] = useState("");
+
+  const moods = [
+    { value: "元気いっぱい", emoji: "😄", color: "bg-yellow-100 hover:bg-yellow-200" },
+    { value: "リラックス", emoji: "😌", color: "bg-blue-100 hover:bg-blue-200" },
+    { value: "疲れている", emoji: "😫", color: "bg-purple-100 hover:bg-purple-200" },
+    { value: "冒険したい", emoji: "🤩", color: "bg-red-100 hover:bg-red-200" },
+    { value: "ヘルシー志向", emoji: "🥗", color: "bg-green-100 hover:bg-green-200" },
+    { value: "がっつり食べたい", emoji: "🍖", color: "bg-orange-100 hover:bg-orange-200" },
+  ];
+
+  const weathers = [
+    { value: "晴れ", emoji: "☀️", color: "bg-yellow-100 hover:bg-yellow-200" },
+    { value: "曇り", emoji: "☁️", color: "bg-gray-100 hover:bg-gray-200" },
+    { value: "雨", emoji: "🌧️", color: "bg-blue-100 hover:bg-blue-200" },
+    { value: "暑い", emoji: "🥵", color: "bg-red-100 hover:bg-red-200" },
+    { value: "寒い", emoji: "🥶", color: "bg-cyan-100 hover:bg-cyan-200" },
+  ];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const response = await fetch("/api/recommend", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, mood, weather }),
+      });
+
+      if (!response.ok) {
+        throw new Error("レコメンデーションの取得に失敗しました");
+      }
+
+      const data = await response.json();
+      setResult(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "エラーが発生しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    setName("");
+    setMood("");
+    setWeather("");
+    setResult(null);
+    setError("");
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        {/* ヘッダー */}
+        <header className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+            🍽️ 天王洲アイル<br className="md:hidden" />ランチAI
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-lg text-gray-600">
+            あなたの気分と天気から、最適なランチをAIが提案します
           </p>
+        </header>
+
+        {/* メインコンテンツ */}
+        <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-8">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* 名前入力 */}
+            <div>
+              <label htmlFor="name" className="block text-xl font-semibold text-gray-800 mb-4">
+                お名前を教えてください
+              </label>
+              <input
+                type="text"
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="例: 太郎"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-lg"
+                required
+              />
+            </div>
+
+            {/* 気分選択 */}
+            <div>
+              <label className="block text-xl font-semibold text-gray-800 mb-4">
+                今日の気分は？
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {moods.map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => setMood(m.value)}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      mood === m.value
+                        ? "border-blue-500 bg-blue-50 scale-105"
+                        : "border-gray-200 hover:border-gray-300"
+                    } ${m.color}`}
+                  >
+                    <div className="text-3xl mb-2">{m.emoji}</div>
+                    <div className="text-sm font-medium text-gray-800">
+                      {m.value}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 天気選択 */}
+            <div>
+              <label className="block text-xl font-semibold text-gray-800 mb-4">
+                今日の天気は？
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {weathers.map((w) => (
+                  <button
+                    key={w.value}
+                    type="button"
+                    onClick={() => setWeather(w.value)}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      weather === w.value
+                        ? "border-blue-500 bg-blue-50 scale-105"
+                        : "border-gray-200 hover:border-gray-300"
+                    } ${w.color}`}
+                  >
+                    <div className="text-3xl mb-2">{w.emoji}</div>
+                    <div className="text-sm font-medium text-gray-800">
+                      {w.value}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 送信ボタン */}
+            <div className="flex gap-4">
+              <button
+                type="submit"
+                disabled={!name || !mood || !weather || loading}
+                className="flex-1 bg-blue-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading ? "AIが考え中..." : "おすすめを教えて！"}
+              </button>
+              {(name || mood || weather || result) && (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="px-6 py-4 rounded-xl border-2 border-gray-300 font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  リセット
+                </button>
+              )}
+            </div>
+          </form>
+
+          {/* エラー表示 */}
+          {error && (
+            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+              {error}
+            </div>
+          )}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+
+        {/* 結果表示 */}
+        {result && (
+          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 animate-fadeIn">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+              🎯 本日のおすすめランチ
+            </h2>
+            
+            {result.message && (
+              <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
+                <p className="text-gray-800 text-lg leading-relaxed whitespace-pre-line">{result.message}</p>
+              </div>
+            )}
+
+            <div className="p-6 border-2 border-orange-300 rounded-xl bg-gradient-to-br from-orange-50 to-yellow-50 shadow-lg">
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-2xl font-bold text-gray-800">
+                  {result.recommendation.name}
+                </h3>
+                <span className="px-4 py-2 bg-orange-500 text-white rounded-full text-sm font-bold shadow-md">
+                  {result.recommendation.cuisine}
+                </span>
+              </div>
+              
+              <div className="mb-4 p-4 bg-white rounded-lg border border-orange-200">
+                <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span>✨</span> おすすめの理由
+                </h4>
+                <p className="text-gray-700 leading-relaxed">
+                  {result.recommendation.reason}
+                </p>
+              </div>
+
+              <div className="mb-4 p-4 bg-white rounded-lg border border-orange-200">
+                <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span>🏠</span> 雰囲気
+                </h4>
+                <p className="text-gray-700 leading-relaxed">
+                  {result.recommendation.atmosphere}
+                </p>
+              </div>
+
+              <div className="mb-4 p-4 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg border-2 border-orange-300 shadow-md">
+                <h4 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
+                  <span>🍛</span> 本日のおすすめメニュー
+                </h4>
+                <p className="text-xl font-bold text-orange-600">
+                  {result.recommendation.recommendedMenu}
+                </p>
+              </div>
+              
+              <div className="flex flex-wrap gap-4 mb-4">
+                <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg border border-orange-200">
+                  <span className="font-semibold text-gray-600">💰 価格帯:</span>
+                  <span className="text-gray-800 font-medium">{result.recommendation.priceRange}</span>
+                </div>
+              </div>
+
+              <a
+                href={result.recommendation.map}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full bg-orange-500 hover:bg-orange-600 text-white text-center py-4 px-6 rounded-xl font-bold text-lg transition-colors shadow-md"
+              >
+                📍 Google マップで見る
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* フッター */}
+        <footer className="text-center mt-12 text-gray-500 text-sm">
+          <p>Powered by Gemini AI × Next.js</p>
+        </footer>
+      </div>
     </div>
   );
 }
