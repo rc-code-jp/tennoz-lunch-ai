@@ -14,10 +14,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "天王洲アイルランチAI - AIがおすすめのランチを提案",
-  description: "あなたの気分と天気から、天王洲アイルエリアで最適なランチをAIが提案します。",
+  description: "あなたの気分と今日の天気から、天王洲アイルエリアで最適なランチをAIが提案します。",
   openGraph: {
     title: "天王洲アイルランチAI - AIがおすすめのランチを提案",
-    description: "あなたの気分と天気から、天王洲アイルエリアで最適なランチをAIが提案します。",
+    description: "あなたの気分と今日の天気から、天王洲アイルエリアで最適なランチをAIが提案します。",
     images: [
       {
         url: "/og-image.jpg",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "天王洲アイルランチAI - AIがおすすめのランチを提案",
-    description: "あなたの気分と天気から、天王洲アイルエリアで最適なランチをAIが提案します。",
+    description: "あなたの気分と今日の天気から、天王洲アイルエリアで最適なランチをAIが提案します。",
     images: ["/og-image.jpg"],
   },
 };
