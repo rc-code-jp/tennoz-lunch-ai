@@ -40,8 +40,6 @@ export default function Home() {
     { value: "晴れ", emoji: "☀️", color: "bg-yellow-100 hover:bg-yellow-200" },
     { value: "曇り", emoji: "☁️", color: "bg-gray-100 hover:bg-gray-200" },
     { value: "雨", emoji: "🌧️", color: "bg-blue-100 hover:bg-blue-200" },
-    { value: "暑い", emoji: "🥵", color: "bg-red-100 hover:bg-red-200" },
-    { value: "寒い", emoji: "🥶", color: "bg-cyan-100 hover:bg-cyan-200" },
   ];
 
   // クッキーから最終リクエスト日付を取得
@@ -84,6 +82,7 @@ export default function Home() {
     // 翌日の0時までの有効期限を設定
     const tomorrow = new Date();
     tomorrow.setHours(24, 0, 0, 0);
+    // biome-ignore lint/suspicious/noDocumentCookie: false positive
     document.cookie = `lastRequestDate=${dateString}; expires=${tomorrow.toUTCString()}; path=/; SameSite=Strict`;
   };
 
@@ -92,6 +91,7 @@ export default function Home() {
     const tomorrow = new Date();
     tomorrow.setHours(24, 0, 0, 0);
     const encodedResult = encodeURIComponent(JSON.stringify(data));
+    // biome-ignore lint/suspicious/noDocumentCookie: false positive
     document.cookie = `savedResult=${encodedResult}; expires=${tomorrow.toUTCString()}; path=/; SameSite=Strict`;
   };
 
@@ -187,14 +187,14 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50">
+    <div className="min-h-screen bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('/og-image.jpg')", backgroundColor: "rgba(0, 0, 0, 0.4)", backgroundBlendMode: "overlay" }}>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* ヘッダー */}
         <header className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 drop-shadow-lg">
             🍽️ 天王洲アイル<br className="md:hidden" />ランチAI
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="text-lg text-white drop-shadow-md">
             あなたの気分と天気から、最適なランチをAIが提案します
           </p>
         </header>
@@ -345,12 +345,12 @@ export default function Home() {
               {/* モーダルコンテンツ */}
               <div className="p-6">
                 {result.message && (
-                  <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
+                  <div className="mb-6 p-5 bg-linear-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
                     <p className="text-gray-800 text-lg leading-relaxed whitespace-pre-line">{result.message}</p>
                   </div>
                 )}
 
-                <div className="p-6 border-2 border-orange-300 rounded-xl bg-gradient-to-br from-orange-50 to-yellow-50 shadow-lg">
+                <div className="p-6 border-2 border-orange-300 rounded-xl bg-linear-to-br from-orange-50 to-yellow-50 shadow-lg">
                   <div className="flex items-start justify-between mb-4">
                     <h3 className="text-2xl font-bold text-gray-800">
                       {result.recommendation.name}
@@ -378,7 +378,7 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <div className="mb-4 p-4 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg border-2 border-orange-300 shadow-md">
+                  <div className="mb-4 p-4 bg-linear-to-r from-yellow-100 to-orange-100 rounded-lg border-2 border-orange-300 shadow-md">
                     <h4 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
                       <span>🍛</span> 本日のおすすめメニュー
                     </h4>
@@ -420,7 +420,7 @@ export default function Home() {
         )}
 
         {/* フッター */}
-        <footer className="text-center mt-12 text-gray-500 text-sm">
+        <footer className="text-center mt-12 text-gray-300 text-sm drop-shadow-md">
           <p>Powered by Gemini AI × Next.js</p>
         </footer>
       </div>

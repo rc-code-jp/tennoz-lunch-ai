@@ -2,6 +2,37 @@ import { GoogleGenAI } from "@google/genai";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+// 天王洲アイルエリアのランチスポット
+const TENNOZ_RESTAURANTS = [
+  "breadworks TENNOZ",
+  "T.Y. HARBOR",
+  "炭火×薪火×レストラン RIDE 品川 天王洲",
+  "PIZZA SALVATORE CUOMO 天王洲",
+  "常喜房",
+  "個室と旬菜魚 銘酒 味喜庵（みきあん）",
+  "かっぽうぎ 天王洲",
+  "凪 天王洲アイル",
+  "おでんと日本酒 みつぼし",
+  "天厨菜館 天王洲アイル店",
+  "栄華楼 天王洲アイル店",
+  "健康中華青蓮 天王洲スフィアタワー店",
+  "栄華楼 天王洲アイル2号店",
+  "朝霞刀削麺",
+  "スパイス ラウンジ",
+  "すぺっつぃえ 天王洲アイル店",
+  "韓国料理潤ちゃん",
+  "AROI～アロイ～ 天王洲アイル店",
+  "カナピナ 天王洲アイル店",
+  "サブウェイ 天王洲シーフォートスクエア店",
+  "寿司酒場 スシイチ 天王洲アイル店",
+  "てけてけ 天王洲アイル店"
+];
+
+// ランダムに配列から1つを選択
+function getRandomRestaurant(restaurants: string[]): string {
+  return restaurants[Math.floor(Math.random() * restaurants.length)];
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { name, mood, weather } = await request.json();
@@ -21,9 +52,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const model = "gemini-2.5-flash-lite";
+    const model = "gemini-2.5-flash";
 
     const ai = new GoogleGenAI({ apiKey });
+
+    // ランダムにお店を選択
+    const selectedRestaurant = getRandomRestaurant(TENNOZ_RESTAURANTS);
 
     const prompt = `あなたは天王洲アイルエリアのランチに詳しい、ユーモアあふれるグルメアドバイザーです。
 以下のJSON形式で必ず回答してください。他のテキストは一切含めないでください。
@@ -33,28 +67,31 @@ export async function POST(request: NextRequest) {
 - 気分: ${mood}
 - 天気: ${weather}
 
-ユーザーの気分と天気に合った天王洲アイルエリアの実在するランチのお店を1つ選んで、以下のJSON形式で回答してください:
+以下のお店「${selectedRestaurant}」を、ユーザーの気分「${mood}」と天気「${weather}」に合わせて、おすすめのランチとして提案してください。
+お店の情報が必要な場合はGoogle Searchを活用して最新の情報を取得してください。
+
+以下のJSON形式で回答してください:
 
 {
   "recommendation": {
-    "name": "お店の名前（実在する天王洲アイルエリアのお店）",
+    "name": "${selectedRestaurant}",
     "cuisine": "料理のジャンル（例: イタリアン、和食、カレー、ラーメンなど）",
     "reason": "${name}さんの気分「${mood}」と天気「${weather}」を考慮した、ユーモアのある楽しいおすすめの理由を2-3文で書いてください",
     "priceRange": "価格帯（例: 1000-1500円）",
     "atmosphere": "お店の雰囲気を面白く魅力的に2-3文で説明してください",
-    "map": "Google Mapsのリンク（https://www.google.com/maps/search/お店名+天王洲アイル の形式）",
+    "map": "Google Mapsのリンク（https://www.google.com/maps/search/${selectedRestaurant}+天王洲アイル の形式）",
     "recommendedMenu": "おすすめのメニュー名"
   },
-  "message": "こんにちは${name}さん！で始まる、そのお店やメニューへの期待が高まる楽しいメッセージを3-4文で書いてください"
+  "message": "こんにちは${name}さん！で始まる、${selectedRestaurant}のこのメニューへの期待が高まる楽しいメッセージを3-4文で書いてください"
 }
 
 重要: 
 - JSONのみを返してください
-- 天王洲アイルエリアに実在するお店を選んでください
-- ユーザーの気分と天気に最適なお店とメニューを提案してください
+- 提案するお店は「${selectedRestaurant}」です（他のお店は選ばないでください）
+- ユーザーの気分「${mood}」と天気「${weather}」に最適なメニューを提案してください
 - すべての項目をユーモアを交えて生成してください`;
 
-    // AIリクエスト
+    // AIリクエスト（Google Search Grounding を有効化）
     const response = await ai.models.generateContent({
       model,  
       contents: prompt,
@@ -62,6 +99,12 @@ export async function POST(request: NextRequest) {
         temperature: 0.9,
         topP: 0.95,
         maxOutputTokens: 2048,
+        // Google Search Grounding を有効化して最新のお店情報を取得
+        tools: [
+          {
+            googleSearch: {},
+          },
+        ],
       },
     });
     
