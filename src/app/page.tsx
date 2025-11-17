@@ -187,7 +187,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('/og-image.jpg')", backgroundColor: "rgba(0, 0, 0, 0.4)", backgroundBlendMode: "overlay" }}>
+    <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* ヘッダー */}
         <header className="text-center mb-12">
