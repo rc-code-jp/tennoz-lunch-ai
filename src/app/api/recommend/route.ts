@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const model = "gemini-1.5-flash";
+    const model = "gemini-2.5-flash";
 
     const ai = new GoogleGenAI({ apiKey });
 
