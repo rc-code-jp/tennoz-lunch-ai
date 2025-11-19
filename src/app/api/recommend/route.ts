@@ -14,7 +14,7 @@ const TENNOZ_RESTAURANTS = [
   "凪 天王洲アイル",
   "おでんと日本酒 みつぼし",
   "天厨菜館 天王洲アイル店",
-  "栄華楼 天王洲アイル店",
+  // "栄華楼 天王洲アイル店",
   "健康中華青蓮 天王洲スフィアタワー店",
   "栄華楼 天王洲アイル2号店",
   "朝霞刀削麺",
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const model = "gemini-2.5-flash";
+    const model = "gemini-1.5-flash";
 
     const ai = new GoogleGenAI({ apiKey });
 
