@@ -6,7 +6,6 @@ type Recommendation = {
   name: string;
   cuisine: string;
   reason: string;
-  priceRange: string;
   atmosphere: string;
   map: string;
   recommendedMenu: string;
@@ -387,12 +386,6 @@ export default function Home() {
                     </p>
                   </div>
                   
-                  <div className="flex flex-wrap gap-4 mb-4">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg border border-orange-200">
-                      <span className="font-semibold text-gray-600">💰 価格帯:</span>
-                      <span className="text-gray-800 font-medium">{result.recommendation.priceRange}</span>
-                    </div>
-                  </div>
 
                   <a
                     href={result.recommendation.map}

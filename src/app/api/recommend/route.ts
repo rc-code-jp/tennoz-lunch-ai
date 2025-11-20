@@ -16,7 +16,7 @@ const TENNOZ_RESTAURANTS = [
   "天厨菜館 天王洲アイル店",
   // "栄華楼 天王洲アイル店",
   "健康中華青蓮 天王洲スフィアタワー店",
-  "栄華楼 天王洲アイル2号店",
+  // "栄華楼 天王洲アイル2号店",
   "朝霞刀削麺",
   "スパイス ラウンジ",
   "すぺっつぃえ 天王洲アイル店",
@@ -59,47 +59,30 @@ export async function POST(request: NextRequest) {
     // ランダムにお店を選択
     const selectedRestaurant = getRandomRestaurant(TENNOZ_RESTAURANTS);
 
-    const prompt = `あなたは天王洲アイルエリアのランチに詳しい、ユーモアあふれるグルメアドバイザーです。
-以下のJSON形式で必ず回答してください。他のテキストは一切含めないでください。
+    const prompt = `JSON形式のみ回答。文字数厳守。
 
-ユーザー情報:
-- 名前: ${name}
-- 気分: ${mood}
-- 天気: ${weather}
-
-以下のお店「${selectedRestaurant}」を、ユーザーの気分「${mood}」と天気「${weather}」に合わせて、おすすめのランチとして提案してください。
-お店の情報が必要な場合はGoogle Searchを活用して最新の情報を取得してください。
-
-以下のJSON形式で回答してください:
+${selectedRestaurant}のランチ情報
+ユーザー: ${name} / 気分: ${mood} / 天気: ${weather}
 
 {
   "recommendation": {
     "name": "${selectedRestaurant}",
-    "cuisine": "料理のジャンル（例: イタリアン、和食、カレー、ラーメンなど）",
-    "reason": "${name}さんの気分「${mood}」と天気「${weather}」を考慮した、ユーモアのある楽しいおすすめの理由を2-3文で書いてください",
-    "priceRange": "価格帯（例: 1000-1500円）",
-    "atmosphere": "お店の雰囲気を面白く魅力的に2-3文で説明してください",
-    "map": "Google Mapsのリンク（https://www.google.com/maps/search/${selectedRestaurant}+天王洲アイル の形式）",
-    "recommendedMenu": "おすすめのメニュー名"
+    "cuisine": "ジャンル",
+    "reason": "${name}さんの${mood}な気分と${weather}の天気に合う理由を90文字以内",
+    "atmosphere": "雰囲気50文字以内",
+    "recommendedMenu": "メニュー名"
   },
-  "message": "こんにちは${name}さん！で始まる、${selectedRestaurant}のこのメニューへの期待が高まる楽しいメッセージを3-4文で書いてください"
-}
-
-重要: 
-- JSONのみを返してください
-- 提案するお店は「${selectedRestaurant}」です（他のお店は選ばないでください）
-- ユーザーの気分「${mood}」と天気「${weather}」に最適なメニューを提案してください
-- すべての項目をユーモアを交えて生成してください`;
+  "message": "こんにちは${name}さん！50文字以内"
+}`;
 
     // AIリクエスト（Google Search Grounding を有効化）
     const response = await ai.models.generateContent({
       model,  
       contents: prompt,
       config: {
-        temperature: 0.9,
-        topP: 0.95,
-        maxOutputTokens: 2048,
-        // Google Search Grounding を有効化して最新のお店情報を取得
+        temperature: 0.5,
+        topP: 0.9,
+        maxOutputTokens: 2048, // Google Search結果を含むため1024に設定
         tools: [
           {
             googleSearch: {},
@@ -111,18 +94,32 @@ export async function POST(request: NextRequest) {
     const text = response.text || "";
 
     console.log("AI Response:", text); // デバッグ用
+    console.log("Finish Reason:", response.candidates?.[0]?.finishReason); // デバッグ用
+
+    // レスポンスが途中で切れていないかチェック
+    const finishReason = response.candidates?.[0]?.finishReason;
+    if (finishReason === "MAX_TOKENS") {
+      console.error("Response truncated due to max tokens limit");
+      return NextResponse.json(
+        { 
+          error: "AIの応答が長すぎて途中で切れました",
+          details: "もう一度お試しください",
+          finishReason: finishReason
+        },
+        { status: 500 }
+      );
+    }
 
     // JSONを抽出（マークダウンのコードブロックを除去）
-    let jsonText = text;
-    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+    let jsonText = text.trim();
+    
+    // ```json と ``` を除去（複数パターンに対応）
+    jsonText = jsonText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/g, '');
+    
+    // 最初の { から最後の } までを抽出
+    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      jsonText = jsonMatch[1];
-    } else {
-      // コードブロックなしの場合も試す
-      const plainJsonMatch = text.match(/\{[\s\S]*\}/);
-      if (plainJsonMatch) {
-        jsonText = plainJsonMatch[0];
-      }
+      jsonText = jsonMatch[0];
     }
 
     console.log("Extracted JSON:", jsonText); // デバッグ用
@@ -143,6 +140,12 @@ export async function POST(request: NextRequest) {
     let recommendation: unknown;
     try {
       recommendation = JSON.parse(jsonText);
+      
+      // mapのURLをサーバー側で追加（AIに生成させる必要なし）
+      if (recommendation && typeof recommendation === 'object' && 'recommendation' in recommendation) {
+        const rec = recommendation as { recommendation: { map?: string } };
+        rec.recommendation.map = `https://www.google.com/maps/search/${encodeURIComponent(selectedRestaurant)}+天王洲アイル`;
+      }
     } catch (parseError) {
       console.error("JSON Parse Error:", parseError);
       console.error("Failed to parse:", jsonText);
