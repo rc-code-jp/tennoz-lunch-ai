@@ -28,6 +28,18 @@ const TENNOZ_RESTAURANTS = [
   "てけてけ 天王洲アイル店"
 ];
 
+// システム指示（AIの役割とレストラン知識を事前に定義）
+const SYSTEM_INSTRUCTION = `あなたは天王洲アイルエリアのランチに詳しいグルメアドバイザーです。
+ユーモアを交えて回答してください。
+
+## 天王洲アイルエリアのレストラン一覧:
+${TENNOZ_RESTAURANTS.map((r) => `- ${r}`).join("\n")}
+
+## 回答ルール:
+- JSON形式のみで回答（他のテキスト不可）
+- 文字数制限を厳守
+- お店の最新情報はGoogle Searchで取得`;
+
 // ランダムに配列から1つを選択
 function getRandomRestaurant(restaurants: string[]): string {
   return restaurants[Math.floor(Math.random() * restaurants.length)];
@@ -59,30 +71,22 @@ export async function POST(request: NextRequest) {
     // ランダムにお店を選択
     const selectedRestaurant = getRandomRestaurant(TENNOZ_RESTAURANTS);
 
-    const prompt = `JSON形式のみ回答。文字数厳守。
-
-${selectedRestaurant}のランチ情報
+    // ユーザー固有の情報のみをプロンプトに（シンプル化）
+    const prompt = `${selectedRestaurant}をおすすめして。
 ユーザー: ${name} / 気分: ${mood} / 天気: ${weather}
 
-{
-  "recommendation": {
-    "name": "${selectedRestaurant}",
-    "cuisine": "ジャンル",
-    "reason": "${name}さんの${mood}な気分と${weather}の天気に合う理由を90文字以内",
-    "atmosphere": "雰囲気50文字以内",
-    "recommendedMenu": "メニュー名"
-  },
-  "message": "こんにちは${name}さん！50文字以内"
-}`;
+出力形式:
+{"recommendation":{"name":"${selectedRestaurant}","cuisine":"ジャンル","reason":"90文字以内","atmosphere":"50文字以内","recommendedMenu":"メニュー名"},"message":"こんにちは${name}さん！50文字以内"}`;
 
-    // AIリクエスト（Google Search Grounding を有効化）
+    // AIリクエスト（System Instruction + Google Search Grounding）
     const response = await ai.models.generateContent({
-      model,  
+      model,
       contents: prompt,
       config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
         temperature: 0.5,
         topP: 0.9,
-        maxOutputTokens: 2048, // Google Search結果を含むため1024に設定
+        maxOutputTokens: 2048,
         tools: [
           {
             googleSearch: {},
