@@ -1,32 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-
-// 天王洲アイルエリアのランチスポット
-const TENNOZ_RESTAURANTS = [
-  "breadworks TENNOZ",
-  "T.Y. HARBOR",
-  "炭火×薪火×レストラン RIDE 品川 天王洲",
-  "PIZZA SALVATORE CUOMO 天王洲",
-  "常喜房",
-  "個室と旬菜魚 銘酒 味喜庵（みきあん）",
-  "かっぽうぎ 天王洲",
-  "凪 天王洲アイル",
-  "おでんと日本酒 みつぼし",
-  "天厨菜館 天王洲アイル店",
-  // "栄華楼 天王洲アイル店",
-  "健康中華青蓮 天王洲スフィアタワー店",
-  // "栄華楼 天王洲アイル2号店",
-  "朝霞刀削麺",
-  "スパイス ラウンジ",
-  "すぺっつぃえ 天王洲アイル店",
-  "韓国料理潤ちゃん",
-  "AROI～アロイ～ 天王洲アイル店",
-  "カナピナ 天王洲アイル店",
-  "サブウェイ 天王洲シーフォートスクエア店",
-  "寿司酒場 スシイチ 天王洲アイル店",
-  "てけてけ 天王洲アイル店"
-];
+import { TENNOZ_RESTAURANTS } from "@/constants/restaurants";
 
 // システム指示（AIの役割とレストラン知識を事前に定義）
 const SYSTEM_INSTRUCTION = `あなたは天王洲アイルエリアのランチに詳しいグルメアドバイザーです。
@@ -41,7 +16,7 @@ ${TENNOZ_RESTAURANTS.map((r) => `- ${r}`).join("\n")}
 - お店の最新情報はGoogle Searchで取得`;
 
 // ランダムに配列から1つを選択
-function getRandomRestaurant(restaurants: string[]): string {
+function getRandomRestaurant(restaurants: readonly string[]): string {
   return restaurants[Math.floor(Math.random() * restaurants.length)];
 }
 
