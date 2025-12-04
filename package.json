@@ -23,9 +23,5 @@
     "@types/react-dom": "^19",
     "tailwindcss": "^4",
     "typescript": "^5"
-  },
-  "volta": {
-    "node": "22.21.1",
-    "npm": "11.6.2"
   }
 }
