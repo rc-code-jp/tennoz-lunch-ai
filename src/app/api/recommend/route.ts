@@ -20,6 +20,40 @@ function getRandomRestaurant(restaurants: readonly string[]): string {
   return restaurants[Math.floor(Math.random() * restaurants.length)];
 }
 
+// 指数バックオフでリトライを実行
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  initialDelay = 1000
+): Promise<T> {
+  let lastError: Error | unknown;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      
+      // 503エラー（過負荷）の場合のみリトライ
+      const is503Error = error instanceof Error && 
+        (error.message.includes("503") || 
+         error.message.includes("overloaded") ||
+         error.message.includes("UNAVAILABLE"));
+      
+      if (!is503Error || attempt === maxRetries - 1) {
+        throw error;
+      }
+      
+      // 指数バックオフ: 1秒、2秒、4秒...
+      const delay = initialDelay * Math.pow(2, attempt);
+      console.log(`API過負荷エラー。${delay}ms後にリトライします（試行 ${attempt + 1}/${maxRetries}）`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { name, mood, weather, lunchType } = await request.json();
@@ -65,20 +99,23 @@ export async function POST(request: NextRequest) {
 {"recommendation":{"name":"${selectedRestaurant}","cuisine":"ジャンル","reason":"90文字以内","atmosphere":"50文字以内","recommendedMenu":"メニュー名"},"message":"こんにちは${name}さん！50文字以内"}`;
 
     // AIリクエスト（System Instruction + Google Search Grounding）
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        temperature: 0.5,
-        topP: 0.9,
-        maxOutputTokens: 2048,
-        tools: [
-          {
-            googleSearch: {},
-          },
-        ],
-      },
+    // 503エラー時は自動的にリトライ
+    const response = await retryWithBackoff(async () => {
+      return await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          temperature: 0.5,
+          topP: 0.9,
+          maxOutputTokens: 2048,
+          tools: [
+            {
+              googleSearch: {},
+            },
+          ],
+        },
+      });
     });
     
     const text = response.text || "";
@@ -158,19 +195,30 @@ export async function POST(request: NextRequest) {
     // エラーの詳細を取得
     let errorMessage = "レコメンデーションの生成に失敗しました";
     let errorDetails = "";
+    let statusCode = 500;
     
     if (error instanceof Error) {
       errorMessage = error.message;
       errorDetails = error.stack || "";
+      
+      // 503エラーの場合は、ユーザーフレンドリーなメッセージを返す
+      if (errorMessage.includes("503") || 
+          errorMessage.includes("overloaded") || 
+          errorMessage.includes("UNAVAILABLE")) {
+        statusCode = 503;
+        errorMessage = "AIサービスが混雑しています。少し時間をおいてから再度お試しください。";
+      }
     }
     
     return NextResponse.json(
       { 
         error: errorMessage,
         details: errorDetails,
-        hint: "APIキーが正しく設定されているか、Gemini APIが利用可能か確認してください"
+        hint: statusCode === 503 
+          ? "数秒後に再度お試しください" 
+          : "APIキーが正しく設定されているか、Gemini APIが利用可能か確認してください"
       },
-      { status: 500 }
+      { status: statusCode }
     );
   }
 }
