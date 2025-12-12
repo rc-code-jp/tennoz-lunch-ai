@@ -39,5 +39,5 @@ export function buildFoodTruckPrompt(
 - 営業時間: ${truckData.営業時間}
 
 出力形式:
-{"recommendation":{"name":"${truckData.店名}","cuisine":"${truckData.ジャンル}","reason":"90文字以内","atmosphere":"${truckData.会場}で営業中","recommendedMenu":"${truckData.メニュー}","venue":"${truckData.会場}","hours":"${truckData.営業時間}"},"message":"こんにちは${name}さん！50文字以内"}`;
+{"recommendation":{"name":"${truckData.店名}","cuisine":"${truckData.ジャンル}","reason":"90文字以内","atmosphere":"${truckData.会場}で営業中","recommendedMenu":"${truckData.メニュー}"},"message":"こんにちは${name}さん！50文字以内"}`;
 }

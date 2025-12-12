@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
     try {
       recommendation = JSON.parse(jsonText);
 
-      // mapのURL、lunchType、キッチンカー固有フィールドをサーバー側で追加
+      // mapのURLとlunchTypeをサーバー側で追加
       if (
         recommendation &&
         typeof recommendation === "object" &&
@@ -232,8 +232,6 @@ export async function POST(request: NextRequest) {
           recommendation: {
             map?: string;
             lunchType?: string;
-            venue?: string;
-            hours?: string;
           };
         };
 
@@ -241,20 +239,12 @@ export async function POST(request: NextRequest) {
         rec.recommendation.lunchType = lunchType;
 
         if (lunchType === "store") {
-          // 店舗の場合: マップリンクを追加
+          // 店舗の場合: 店舗名に基づいたマップリンクを追加
           rec.recommendation.map = `https://www.google.com/maps/search/${encodeURIComponent(selectedRestaurant)}+天王洲アイル`;
         } else {
-          // キッチンカーの場合: マップリンクを空文字列に設定
-          rec.recommendation.map = "";
-
-          // キッチンカー固有フィールドを追加（プロンプトから生成されない場合のフォールバック）
+          // キッチンカーの場合: 会場名に基づいたマップリンクを追加
           if (selectedTruckData) {
-            if (!rec.recommendation.venue) {
-              rec.recommendation.venue = selectedTruckData.会場;
-            }
-            if (!rec.recommendation.hours) {
-              rec.recommendation.hours = selectedTruckData.営業時間;
-            }
+            rec.recommendation.map = `https://www.google.com/maps/search/${encodeURIComponent(selectedTruckData.会場)}`;
           }
         }
       }

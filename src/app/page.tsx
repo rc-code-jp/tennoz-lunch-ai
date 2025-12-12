@@ -11,8 +11,6 @@ type Recommendation = {
   map: string;
   recommendedMenu: string;
   lunchType: LunchType;
-  venue?: string;
-  hours?: string;
 };
 
 type RecommendationResponse = {
@@ -501,44 +499,17 @@ export default function Home() {
                     </p>
                   </div>
 
-                  {/* キッチンカーの場合: 会場情報と営業時間を表示 */}
-                  {result.recommendation.lunchType === "food-truck" && (
-                    <>
-                      {result.recommendation.venue && (
-                        <div className="mb-4 p-4 bg-white rounded-lg border border-orange-200">
-                          <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
-                            <span>📍</span> 会場
-                          </h4>
-                          <p className="text-gray-700 leading-relaxed">
-                            {result.recommendation.venue}
-                          </p>
-                        </div>
-                      )}
-                      {result.recommendation.hours && (
-                        <div className="mb-4 p-4 bg-white rounded-lg border border-orange-200">
-                          <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
-                            <span>🕐</span> 営業時間
-                          </h4>
-                          <p className="text-gray-700 leading-relaxed">
-                            {result.recommendation.hours}
-                          </p>
-                        </div>
-                      )}
-                    </>
+                  {/* マップリンクを常に表示 */}
+                  {result.recommendation.map && (
+                    <a
+                      href={result.recommendation.map}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full bg-orange-500 hover:bg-orange-600 text-white text-center py-4 px-6 rounded-xl font-bold text-lg transition-colors shadow-md"
+                    >
+                      📍 Google マップで見る
+                    </a>
                   )}
-
-                  {/* 店舗の場合: マップリンクを表示 */}
-                  {result.recommendation.lunchType === "store" &&
-                    result.recommendation.map && (
-                      <a
-                        href={result.recommendation.map}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-full bg-orange-500 hover:bg-orange-600 text-white text-center py-4 px-6 rounded-xl font-bold text-lg transition-colors shadow-md"
-                      >
-                        📍 Google マップで見る
-                      </a>
-                    )}
                 </div>
               </div>
 
