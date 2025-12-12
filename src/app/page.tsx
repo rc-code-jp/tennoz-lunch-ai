@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { LunchType } from "@/types/lunch";
 
 type Recommendation = {
@@ -30,12 +30,32 @@ export default function Home() {
   const [remainingTime, setRemainingTime] = useState<string>("");
 
   const moods = [
-    { value: "元気いっぱい", emoji: "😄", color: "bg-yellow-100 hover:bg-yellow-200" },
-    { value: "リラックス", emoji: "😌", color: "bg-blue-100 hover:bg-blue-200" },
-    { value: "疲れている", emoji: "😫", color: "bg-purple-100 hover:bg-purple-200" },
+    {
+      value: "元気いっぱい",
+      emoji: "😄",
+      color: "bg-yellow-100 hover:bg-yellow-200",
+    },
+    {
+      value: "リラックス",
+      emoji: "😌",
+      color: "bg-blue-100 hover:bg-blue-200",
+    },
+    {
+      value: "疲れている",
+      emoji: "😫",
+      color: "bg-purple-100 hover:bg-purple-200",
+    },
     { value: "冒険したい", emoji: "🤩", color: "bg-red-100 hover:bg-red-200" },
-    { value: "ヘルシー志向", emoji: "🥗", color: "bg-green-100 hover:bg-green-200" },
-    { value: "がっつり食べたい", emoji: "🍖", color: "bg-orange-100 hover:bg-orange-200" },
+    {
+      value: "ヘルシー志向",
+      emoji: "🥗",
+      color: "bg-green-100 hover:bg-green-200",
+    },
+    {
+      value: "がっつり食べたい",
+      emoji: "🍖",
+      color: "bg-orange-100 hover:bg-orange-200",
+    },
   ];
 
   const weathers = [
@@ -45,17 +65,17 @@ export default function Home() {
   ];
 
   const lunchTypes = [
-    { 
-      value: 'store' as const, 
-      label: '店舗',
-      emoji: '🏪', 
-      color: 'bg-green-100 hover:bg-green-200' 
+    {
+      value: "store" as const,
+      label: "店舗",
+      emoji: "🏪",
+      color: "bg-green-100 hover:bg-green-200",
     },
-    { 
-      value: 'food-truck' as const, 
-      label: 'キッチンカー',
-      emoji: '🚚', 
-      color: 'bg-orange-100 hover:bg-orange-200' 
+    {
+      value: "food-truck" as const,
+      label: "キッチンカー",
+      emoji: "🚚",
+      color: "bg-orange-100 hover:bg-orange-200",
     },
   ];
 
@@ -64,7 +84,7 @@ export default function Home() {
     if (typeof document === "undefined") return null;
     const cookies = document.cookie.split("; ");
     const lastRequestCookie = cookies.find((row) =>
-      row.startsWith("lastRequestDate=")
+      row.startsWith("lastRequestDate="),
     );
     if (lastRequestCookie) {
       return lastRequestCookie.split("=")[1];
@@ -76,9 +96,7 @@ export default function Home() {
   const getSavedResult = useCallback((): RecommendationResponse | null => {
     if (typeof document === "undefined") return null;
     const cookies = document.cookie.split("; ");
-    const resultCookie = cookies.find((row) =>
-      row.startsWith("savedResult=")
-    );
+    const resultCookie = cookies.find((row) => row.startsWith("savedResult="));
     if (resultCookie) {
       try {
         const encodedResult = resultCookie.split("=")[1];
@@ -125,32 +143,45 @@ export default function Home() {
 
     // 同じ日付の場合は制限
     setCanRequest(false);
-    
+
     // 翌日0時までの残り時間を計算
     const now = new Date();
     const tomorrow = new Date();
     tomorrow.setHours(24, 0, 0, 0);
     const remainingMs = tomorrow.getTime() - now.getTime();
     const hours = Math.floor(remainingMs / (60 * 60 * 1000));
-    const minutes = Math.floor(
-      (remainingMs % (60 * 60 * 1000)) / (60 * 1000)
-    );
+    const minutes = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
     setRemainingTime(`${hours}時間${minutes}分`);
   }, [getLastRequestDate]);
 
   // 初回マウント時とタイマーでチェック
   useEffect(() => {
     checkCanRequest();
-    
+
     // 保存された結果を読み込む
     const savedResult = getSavedResult();
     if (savedResult) {
       setResult(savedResult);
     }
-    
+
     const interval = setInterval(checkCanRequest, 60000); // 1分ごとにチェック
     return () => clearInterval(interval);
   }, [checkCanRequest, getSavedResult]);
+
+  // 現在の曜日を日本語形式で取得
+  const getDayOfWeek = (): string => {
+    const days = [
+      "日曜日",
+      "月曜日",
+      "火曜日",
+      "水曜日",
+      "木曜日",
+      "金曜日",
+      "土曜日",
+    ];
+    const today = new Date();
+    return days[today.getDay()];
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,7 +189,7 @@ export default function Home() {
     // リクエスト制限チェック
     if (!canRequest) {
       setError(
-        `本日の利用回数に達しました。次回は${remainingTime}後にご利用いただけます。`
+        `本日の利用回数に達しました。次回は${remainingTime}後にご利用いただけます。`,
       );
       return;
     }
@@ -168,12 +199,14 @@ export default function Home() {
     setResult(null);
 
     try {
+      const dayOfWeek = getDayOfWeek();
+
       const response = await fetch("/api/recommend", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, mood, weather, lunchType }),
+        body: JSON.stringify({ name, mood, weather, lunchType, dayOfWeek }),
       });
 
       if (!response.ok) {
@@ -182,7 +215,7 @@ export default function Home() {
 
       const data = await response.json();
       setResult(data);
-      
+
       // リクエスト成功時にクッキーを設定
       setLastRequestDate();
       saveResult(data); // 結果を保存
@@ -210,7 +243,9 @@ export default function Home() {
         {/* ヘッダー */}
         <header className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 drop-shadow-lg">
-            🍽️ 天王洲アイル<br className="md:hidden" />ランチAI
+            🍽️ 天王洲アイル
+            <br className="md:hidden" />
+            ランチAI
           </h1>
           <p className="text-lg text-white drop-shadow-md">
             あなたの気分と天気から、最適なランチをAIが提案します
@@ -222,7 +257,10 @@ export default function Home() {
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* 名前入力 */}
             <div>
-              <label htmlFor="name" className="block text-xl font-semibold text-gray-800 mb-4">
+              <label
+                htmlFor="name"
+                className="block text-xl font-semibold text-gray-800 mb-4"
+              >
                 お名前を教えてください
               </label>
               <input
@@ -342,7 +380,11 @@ export default function Home() {
                 disabled={!name || !mood || !weather || loading || !canRequest}
                 className="flex-1 bg-blue-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? "AIが考え中..." : canRequest ? "おすすめを教えて！" : "本日の利用回数に達しました"}
+                {loading
+                  ? "AIが考え中..."
+                  : canRequest
+                    ? "おすすめを教えて！"
+                    : "本日の利用回数に達しました"}
               </button>
               {(name || mood || weather || lunchType !== "store" || result) && (
                 <button
@@ -379,9 +421,20 @@ export default function Home() {
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                   aria-label="閉じる"
                 >
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <svg
+                    className="w-8 h-8"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
                     <title>閉じる</title>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
@@ -390,7 +443,9 @@ export default function Home() {
               <div className="p-6">
                 {result.message && (
                   <div className="mb-6 p-5 bg-linear-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
-                    <p className="text-gray-800 text-lg leading-relaxed whitespace-pre-line">{result.message}</p>
+                    <p className="text-gray-800 text-lg leading-relaxed whitespace-pre-line">
+                      {result.message}
+                    </p>
                   </div>
                 )}
 
@@ -403,16 +458,20 @@ export default function Home() {
                       <span className="px-4 py-2 bg-orange-500 text-white rounded-full text-sm font-bold shadow-md">
                         {result.recommendation.cuisine}
                       </span>
-                      <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-md ${
-                        result.recommendation.lunchType === 'store' 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-orange-600 text-white'
-                      }`}>
-                        {result.recommendation.lunchType === 'store' ? '🏪 店舗' : '🚚 キッチンカー'}
+                      <span
+                        className={`px-4 py-2 rounded-full text-sm font-bold shadow-md ${
+                          result.recommendation.lunchType === "store"
+                            ? "bg-green-500 text-white"
+                            : "bg-orange-600 text-white"
+                        }`}
+                      >
+                        {result.recommendation.lunchType === "store"
+                          ? "🏪 店舗"
+                          : "🚚 キッチンカー"}
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="mb-4 p-4 bg-white rounded-lg border border-orange-200">
                     <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
                       <span>✨</span> おすすめの理由
@@ -439,16 +498,18 @@ export default function Home() {
                       {result.recommendation.recommendedMenu}
                     </p>
                   </div>
-                  
 
-                  <a
-                    href={result.recommendation.map}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block w-full bg-orange-500 hover:bg-orange-600 text-white text-center py-4 px-6 rounded-xl font-bold text-lg transition-colors shadow-md"
-                  >
-                    📍 Google マップで見る
-                  </a>
+                  {/* マップリンクを常に表示 */}
+                  {result.recommendation.map && (
+                    <a
+                      href={result.recommendation.map}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full bg-orange-500 hover:bg-orange-600 text-white text-center py-4 px-6 rounded-xl font-bold text-lg transition-colors shadow-md"
+                    >
+                      📍 Google マップで見る
+                    </a>
+                  )}
                 </div>
               </div>
 

@@ -4,6 +4,8 @@
 
 天王洲アイルランチAIアプリケーションに、ランチタイプ（店舗またはキッチンカー）の選択機能を追加します。この機能により、ユーザーは固定店舗での食事か、キッチンカーでの食事かを選択でき、選択に応じた適切な推薦を受けられるようになります。
 
+キッチンカーの情報はCSVファイル（`src/assets/FOOD_TRUCK.csv`）から読み込まれ、リクエストされた曜日に基づいてフィルタリングされます。店舗とキッチンカーでは異なるプロンプト生成ロジックを使用し、キッチンカーの場合はGoogle Search Groundingを使用せず、CSVに記載された情報のみを使用します。
+
 既存のアーキテクチャ（Next.js App Router、React 19、TypeScript、Tailwind CSS）を維持しながら、最小限の変更で機能を追加します。
 
 ## アーキテクチャ
@@ -22,7 +24,7 @@
 │  ┌─────────────────────────────────┐   │
 │  │  フォーム送信                    │   │
 │  │  { name, mood, weather,         │   │
-│  │    lunchType }                  │   │
+│  │    lunchType, dayOfWeek }       │   │
 │  └─────────────────────────────────┘   │
 └─────────────────────────────────────────┘
               ↓ POST /api/recommend
@@ -31,19 +33,28 @@
 │  ┌─────────────────────────────────┐   │
 │  │  リクエスト処理                  │   │
 │  │  - lunchType パラメータ受信      │   │
+│  │  - dayOfWeek パラメータ受信      │   │
 │  └─────────────────────────────────┘   │
 │              ↓                          │
 │  ┌─────────────────────────────────┐   │
-│  │  レストラン選択ロジック          │   │
+│  │  データソース選択                │   │
 │  │  if (lunchType === 'store')     │   │
 │  │    → TENNOZ_RESTAURANTS         │   │
 │  │  else                           │   │
-│  │    → TENNOZ_FOOD_TRUCKS         │   │
+│  │    → CSV読み込み + 曜日フィルタ  │   │
+│  └─────────────────────────────────┘   │
+│              ↓                          │
+│  ┌─────────────────────────────────┐   │
+│  │  プロンプト生成                  │   │
+│  │  - 店舗: buildStorePrompt()     │   │
+│  │  - キッチンカー:                 │   │
+│  │    buildFoodTruckPrompt()       │   │
 │  └─────────────────────────────────┘   │
 │              ↓                          │
 │  ┌─────────────────────────────────┐   │
 │  │  Gemini AI 推薦生成              │   │
-│  │  + Google Search Grounding      │   │
+│  │  - 店舗: Google Search ON       │   │
+│  │  - キッチンカー: Search OFF     │   │
 │  └─────────────────────────────────┘   │
 └─────────────────────────────────────────┘
               ↓ JSON Response
@@ -53,6 +64,7 @@
 │  │  推薦結果表示                    │   │
 │  │  - レストラン情報                │   │
 │  │  - ランチタイプ表示              │   │
+│  │  - キッチンカー: マップなし      │   │
 │  └─────────────────────────────────┘   │
 └─────────────────────────────────────────┘
 ```
@@ -61,13 +73,17 @@
 
 1. **ユーザー入力**: 名前、気分、天気、ランチタイプ（デフォルト: 店舗）
 2. **クライアント検証**: 必須項目の確認
-3. **API送信**: POST /api/recommend with { name, mood, weather, lunchType }
-4. **サーバー処理**:
-   - lunchType に基づいてレストランリストを選択
-   - ランダムに1店舗を選択
-   - Gemini AI で推薦メッセージを生成
-5. **レスポンス**: 推薦情報 + ランチタイプ
-6. **結果表示**: モーダルで表示、Cookie に保存
+3. **曜日取得**: クライアントで現在の曜日を取得（日本語形式: "月曜日"）
+4. **API送信**: POST /api/recommend with { name, mood, weather, lunchType, dayOfWeek }
+5. **サーバー処理**:
+   - lunchType に基づいてデータソースを選択
+     - 店舗: TENNOZ_RESTAURANTS定数
+     - キッチンカー: CSVファイル読み込み → 曜日フィルタリング
+   - フィルタリング後のリストからランダムに1つを選択
+   - ランチタイプに応じたプロンプト生成関数を呼び出し
+   - Gemini AI で推薦メッセージを生成（店舗のみGoogle Search有効）
+6. **レスポンス**: 推薦情報 + ランチタイプ（キッチンカーの場合はmap=""）
+7. **結果表示**: モーダルで表示、Cookie に保存
 
 ## コンポーネントとインターフェース
 
@@ -108,7 +124,22 @@ type RecommendRequest = {
   name: string;
   mood: string;
   weather: string;
-  lunchType: LunchType; // 追加
+  lunchType: LunchType;
+  dayOfWeek: string; // 追加: "月曜日", "火曜日", etc.
+};
+```
+
+#### キッチンカーデータ型
+
+```typescript
+// src/types/lunch.ts
+export type FoodTruckData = {
+  曜日: string;
+  会場: string;
+  店名: string;
+  ジャンル: string;
+  メニュー: string;
+  営業時間: string;
 };
 ```
 
@@ -168,18 +199,19 @@ const lunchTypes = [
 
 #### POST /api/recommend
 
-**リクエスト:**
+**リクエスト（店舗）:**
 
 ```json
 {
   "name": "太郎",
   "mood": "元気いっぱい",
   "weather": "晴れ",
-  "lunchType": "store"
+  "lunchType": "store",
+  "dayOfWeek": "月曜日"
 }
 ```
 
-**レスポンス:**
+**レスポンス（店舗）:**
 
 ```json
 {
@@ -193,6 +225,37 @@ const lunchTypes = [
     "lunchType": "store"
   },
   "message": "こんにちは太郎さん！..."
+}
+```
+
+**リクエスト（キッチンカー）:**
+
+```json
+{
+  "name": "花子",
+  "mood": "リラックス",
+  "weather": "曇り",
+  "lunchType": "food-truck",
+  "dayOfWeek": "月曜日"
+}
+```
+
+**レスポンス（キッチンカー）:**
+
+```json
+{
+  "recommendation": {
+    "name": "とらじゅ",
+    "cuisine": "和食（あなごめし）",
+    "reason": "...",
+    "atmosphere": "天王洲オーシャンスクエアで営業中",
+    "map": "https://www.google.com/maps/search/天王洲オーシャンスクエア",
+    "recommendedMenu": "あなごめし 小盛",
+    "lunchType": "food-truck",
+    "venue": "天王洲オーシャンスクエア",
+    "hours": "11:30-14:00"
+  },
+  "message": "こんにちは花子さん！..."
 }
 ```
 
@@ -213,21 +276,87 @@ export const TENNOZ_RESTAURANTS = [
 export type TennozRestaurant = (typeof TENNOZ_RESTAURANTS)[number];
 ```
 
-#### キッチンカーリスト（新規）
+#### キッチンカーデータ（CSV）
+
+キッチンカーの情報は`src/assets/FOOD_TRUCK.csv`に格納されます：
+
+```csv
+曜日,会場,店名,ジャンル,メニュー,営業時間
+月曜日,天王洲オーシャンスクエア,とらじゅ,和食（あなごめし）,あなごめし 小盛,11:30-14:00
+月曜日,天王洲オーシャンスクエア,kitchen car.halu,唐揚げ（弁当・丼）,豚丼,11:30-14:00
+...
+```
+
+CSVパーサー関数:
 
 ```typescript
-// src/constants/restaurants.ts
-export const TENNOZ_FOOD_TRUCKS = [
-  "天王洲キッチンカー A",
-  "天王洲キッチンカー B",
-  "天王洲キッチンカー C",
-  // ... キッチンカーリスト
-] as const;
+// src/utils/csvParser.ts (新規作成)
+import { FoodTruckData } from '@/types/lunch';
 
-export type TennozFoodTruck = (typeof TENNOZ_FOOD_TRUCKS)[number];
+export function parseFoodTruckCSV(csvContent: string): FoodTruckData[] {
+  const lines = csvContent.trim().split('\n');
+  const headers = lines[0].split(',');
+  
+  return lines.slice(1).map(line => {
+    const values = line.split(',');
+    return {
+      曜日: values[0],
+      会場: values[1],
+      店名: values[2],
+      ジャンル: values[3],
+      メニュー: values[4],
+      営業時間: values[5],
+    };
+  });
+}
 
-// 統合型
-export type TennozLunchSpot = TennozRestaurant | TennozFoodTruck;
+export function filterByDayOfWeek(
+  trucks: FoodTruckData[],
+  dayOfWeek: string
+): FoodTruckData[] {
+  return trucks.filter(truck => truck.曜日 === dayOfWeek);
+}
+```
+
+### プロンプト生成
+
+店舗とキッチンカーで異なるプロンプト生成ロジックを使用します。
+
+```typescript
+// src/utils/promptBuilder.ts (新規作成)
+
+export function buildStorePrompt(
+  selectedRestaurant: string,
+  name: string,
+  mood: string,
+  weather: string
+): string {
+  return `${selectedRestaurant}をおすすめして。
+ユーザー: ${name} / 気分: ${mood} / 天気: ${weather}
+
+出力形式:
+{"recommendation":{"name":"${selectedRestaurant}","cuisine":"ジャンル","reason":"90文字以内","atmosphere":"50文字以内","recommendedMenu":"メニュー名"},"message":"こんにちは${name}さん！50文字以内"}`;
+}
+
+export function buildFoodTruckPrompt(
+  truckData: FoodTruckData,
+  name: string,
+  mood: string,
+  weather: string
+): string {
+  return `${truckData.店名}をおすすめして。
+ユーザー: ${name} / 気分: ${mood} / 天気: ${weather}
+
+キッチンカー情報:
+- 店名: ${truckData.店名}
+- ジャンル: ${truckData.ジャンル}
+- おすすめメニュー: ${truckData.メニュー}
+- 会場: ${truckData.会場}
+- 営業時間: ${truckData.営業時間}
+
+出力形式:
+{"recommendation":{"name":"${truckData.店名}","cuisine":"${truckData.ジャンル}","reason":"90文字以内","atmosphere":"${truckData.会場}で営業中","recommendedMenu":"${truckData.メニュー}","venue":"${truckData.会場}","hours":"${truckData.営業時間}"},"message":"こんにちは${name}さん！50文字以内"}`;
+}
 ```
 
 ### Cookie保存データ
@@ -244,7 +373,9 @@ type SavedResult = {
     atmosphere: string;
     map: string;
     recommendedMenu: string;
-    lunchType: LunchType; // 追加
+    lunchType: LunchType;
+    venue?: string; // キッチンカーのみ
+    hours?: string; // キッチンカーのみ
   };
   message: string;
 };
@@ -254,7 +385,6 @@ type SavedResult = {
 
 *プロパティとは、システムのすべての有効な実行において真であるべき特性や動作のことです。プロパティは、人間が読める仕様と機械で検証可能な正確性保証の橋渡しとなります。*
 
-
 ### プロパティリフレクション
 
 プレワーク分析から、以下の冗長性を特定しました：
@@ -263,6 +393,10 @@ type SavedResult = {
 - **2.1、2.2、2.3**: すべてランチタイプに基づく正しいリスト選択をテストしており、1つの包括的なプロパティに統合可能
 - **5.3、5.4、5.5**: すべてCookieの往復でのlunchType保持をテストしており、1つのラウンドトリッププロパティに統合可能
 - **6.2、6.3、6.4**: すべてリセット後の状態をテストしており、1つの包括的なプロパティに統合可能
+- **7.2と7.3**: 両方とも曜日フィルタリングの正確性をテストしており、統合可能
+- **8.2と8.3**: Google Search設定の有効/無効をテストしており、1つのプロパティに統合可能
+- **9.1と9.2**: 両方ともマップリンクの生成をテストしており、1つのプロパティに統合可能
+- **9.3と9.4**: UI表示ロジックをテストしており、統合可能
 
 ### 正確性プロパティ
 
@@ -294,7 +428,7 @@ type SavedResult = {
 
 *任意の*'store'と'food-truck'以外の値について、システムはそれを無効なランチタイプとして拒否しなければならない
 
-**検証: 要件 3.5**
+**検証: 要件 3.6**
 
 #### プロパティ6: 選択状態の視覚的フィードバック
 
@@ -325,6 +459,60 @@ type SavedResult = {
 *任意の*フォーム状態について、少なくとも1つのフィールドに値がある場合、またはresultが存在する場合にのみ、リセットボタンが表示されなければならない
 
 **検証: 要件 6.5**
+
+#### プロパティ11: キッチンカーリクエストに曜日を含む
+
+*任意の*キッチンカーの推薦リクエストについて、APIに送信されるリクエストボディにはdayOfWeekフィールドが含まれていなければならない
+
+**検証: 要件 7.1**
+
+#### プロパティ12: 曜日フィルタリングの正確性
+
+*任意の*曜日とキッチンカーデータについて、フィルタリング後のリストに含まれるすべてのキッチンカーは指定された曜日に営業していなければならない
+
+**検証: 要件 7.2, 7.3**
+
+#### プロパティ13: フィルタリング済みリストからの選択
+
+*任意の*キッチンカー推薦について、選択されたキッチンカーはフィルタリング済みリストに含まれていなければならない
+
+**検証: 要件 7.5**
+
+#### プロパティ14: ランチタイプに基づくプロンプト生成関数の選択
+
+*任意の*ランチタイプについて、システムは対応するプロンプト生成関数（店舗: buildStorePrompt、キッチンカー: buildFoodTruckPrompt）を使用しなければならない
+
+**検証: 要件 8.1**
+
+#### プロパティ15: Google Search Groundingの条件付き有効化
+
+*任意の*推薦リクエストについて、店舗の場合はGoogle Search Groundingが有効であり、キッチンカーの場合は無効でなければならない
+
+**検証: 要件 8.2, 8.3**
+
+#### プロパティ16: キッチンカープロンプトの完全性
+
+*任意の*キッチンカーデータについて、生成されたプロンプトにはジャンル、メニュー、営業時間、会場のすべての情報が含まれていなければならない
+
+**検証: 要件 8.4**
+
+#### プロパティ17: すべての推薦結果にマップリンクを含む
+
+*任意の*推薦結果について、店舗の場合は店舗名に基づいたGoogle Mapsの検索URL、キッチンカーの場合は会場名に基づいたGoogle Mapsの検索URLがmapフィールドに含まれていなければならない
+
+**検証: 要件 9.1, 9.2**
+
+#### プロパティ18: マップリンクの適切なURLエンコーディング
+
+*任意の*推薦結果について、mapフィールドに含まれるURLは適切にエンコードされた有効なGoogle Maps検索URLでなければならない
+
+**検証: 要件 9.5**
+
+#### プロパティ19: ランチタイプに応じた適切な情報表示
+
+*任意の*推薦結果について、マップリンクがクリック可能なリンクとして表示され、キッチンカーの場合は会場情報も併せて表示されなければならない
+
+**検証: 要件 9.3, 9.4**
 
 ## エラーハンドリング
 
@@ -453,30 +641,41 @@ if (lunchType !== 'store' && lunchType !== 'food-truck') {
 
 ### フェーズ1: データ層の拡張
 
-1. キッチンカーリストの定義（`src/constants/restaurants.ts`）
-2. LunchType型の定義（新規ファイル）
+1. LunchType型の定義（既存）
+2. FoodTruckData型の定義（新規）
+3. CSVパーサーユーティリティの作成（`src/utils/csvParser.ts`）
+4. 曜日フィルタリング関数の実装
 
-### フェーズ2: APIの更新
+### フェーズ2: プロンプト生成の分離
 
-1. リクエスト型にlunchTypeを追加
-2. レストラン選択ロジックの更新
-3. バリデーションの追加
-4. レスポンスにlunchTypeを含める
+1. プロンプトビルダーユーティリティの作成（`src/utils/promptBuilder.ts`）
+2. 店舗用プロンプト生成関数の実装
+3. キッチンカー用プロンプト生成関数の実装
 
-### フェーズ3: UIの更新
+### フェーズ3: APIの更新
 
-1. ランチタイプ選択UIの追加
-2. 状態管理（useState）の追加
-3. フォーム送信時にlunchTypeを含める
-4. 推薦結果表示にlunchTypeを追加
-5. Cookie保存/読み込みの更新
-6. リセット機能の更新
+1. リクエスト型にdayOfWeekを追加
+2. CSVファイル読み込みロジックの追加
+3. 曜日フィルタリングの実装
+4. プロンプト生成関数の呼び出し分岐
+5. Google Search Groundingの条件付き有効化
+6. レスポンスにキッチンカー固有フィールドを追加
+7. エラーハンドリング（空のフィルタリング結果）
 
-### フェーズ4: テストの実装
+### フェーズ4: UIの更新
 
-1. ユニットテストの作成
-2. プロパティベーステストの作成
-3. テストの実行と検証
+1. 曜日取得ロジックの追加（クライアント側）
+2. フォーム送信時にdayOfWeekを含める
+3. 推薦結果表示の条件分岐（マップリンク vs 会場情報）
+4. Cookie保存/読み込みの更新（venue, hoursフィールド）
+
+### フェーズ5: テストの実装
+
+1. CSVパーサーのユニットテスト
+2. 曜日フィルタリングのユニットテスト
+3. プロンプト生成関数のユニットテスト
+4. プロパティベーステストの作成
+5. テストの実行と検証
 
 ## パフォーマンス考慮事項
 

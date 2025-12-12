@@ -1,11 +1,3 @@
-// ランチタイプの定義
-export type LunchType = "store" | "food-truck";
-
-export const LUNCH_TYPES = {
-  STORE: "store" as const,
-  FOOD_TRUCK: "food-truck" as const,
-} as const;
-
 // 天王洲アイルエリアの店舗
 export const TENNOZ_RESTAURANTS = [
   "breadworks TENNOZ",
@@ -31,18 +23,3 @@ export const TENNOZ_RESTAURANTS = [
 ] as const;
 
 export type TennozRestaurant = (typeof TENNOZ_RESTAURANTS)[number];
-
-// 天王洲アイルエリアのキッチンカー
-export const TENNOZ_FOOD_TRUCKS = [
-  "天王洲キッチンカー A",
-  "天王洲キッチンカー B",
-  "天王洲キッチンカー C",
-  "天王洲キッチンカー D",
-  "天王洲キッチンカー E",
-] as const;
-
-export type TennozFoodTruck = (typeof TENNOZ_FOOD_TRUCKS)[number];
-
-// 統合型
-export type TennozLunchSpot = TennozRestaurant | TennozFoodTruck;
-
