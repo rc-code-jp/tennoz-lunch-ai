@@ -22,7 +22,7 @@
 body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  background-color: #F1F3CE;
+  background-color: #f1f3ce;
 }
 
 @keyframes fadeIn {
