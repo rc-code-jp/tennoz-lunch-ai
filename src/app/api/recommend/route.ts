@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { TENNOZ_RESTAURANTS } from "@/constants/restaurants";
+import { TENNOZ_RESTAURANTS, TENNOZ_FOOD_TRUCKS, type LunchType } from "@/constants/restaurants";
 
 // システム指示（AIの役割とレストラン知識を事前に定義）
 const SYSTEM_INSTRUCTION = `あなたは天王洲アイルエリアのランチに詳しいグルメアドバイザーです。
@@ -22,11 +22,19 @@ function getRandomRestaurant(restaurants: readonly string[]): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, mood, weather } = await request.json();
+    const { name, mood, weather, lunchType } = await request.json();
 
     if (!name || !mood || !weather) {
       return NextResponse.json(
         { error: "名前、気分、天気の情報が必要です" },
+        { status: 400 }
+      );
+    }
+
+    // lunchTypeのバリデーション
+    if (lunchType !== "store" && lunchType !== "food-truck") {
+      return NextResponse.json(
+        { error: "ランチタイプは'store'または'food-truck'である必要があります" },
         { status: 400 }
       );
     }
@@ -43,8 +51,11 @@ export async function POST(request: NextRequest) {
 
     const ai = new GoogleGenAI({ apiKey });
 
+    // lunchTypeに基づいてレストランリストを選択
+    const restaurantList = lunchType === "store" ? TENNOZ_RESTAURANTS : TENNOZ_FOOD_TRUCKS;
+    
     // ランダムにお店を選択
-    const selectedRestaurant = getRandomRestaurant(TENNOZ_RESTAURANTS);
+    const selectedRestaurant = getRandomRestaurant(restaurantList);
 
     // ユーザー固有の情報のみをプロンプトに（シンプル化）
     const prompt = `${selectedRestaurant}をおすすめして。
@@ -120,10 +131,11 @@ export async function POST(request: NextRequest) {
     try {
       recommendation = JSON.parse(jsonText);
       
-      // mapのURLをサーバー側で追加（AIに生成させる必要なし）
+      // mapのURLとlunchTypeをサーバー側で追加
       if (recommendation && typeof recommendation === 'object' && 'recommendation' in recommendation) {
-        const rec = recommendation as { recommendation: { map?: string } };
+        const rec = recommendation as { recommendation: { map?: string; lunchType?: LunchType } };
         rec.recommendation.map = `https://www.google.com/maps/search/${encodeURIComponent(selectedRestaurant)}+天王洲アイル`;
+        rec.recommendation.lunchType = lunchType;
       }
     } catch (parseError) {
       console.error("JSON Parse Error:", parseError);
