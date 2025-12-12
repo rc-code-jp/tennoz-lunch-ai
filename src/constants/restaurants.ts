@@ -1,4 +1,12 @@
-// 天王洲アイルエリアのランチスポット
+// ランチタイプの定義
+export type LunchType = "store" | "food-truck";
+
+export const LUNCH_TYPES = {
+  STORE: "store" as const,
+  FOOD_TRUCK: "food-truck" as const,
+} as const;
+
+// 天王洲アイルエリアの店舗
 export const TENNOZ_RESTAURANTS = [
   "breadworks TENNOZ",
   "T.Y. HARBOR",
@@ -10,9 +18,7 @@ export const TENNOZ_RESTAURANTS = [
   "凪 天王洲アイル",
   "おでんと日本酒 みつぼし",
   "天厨菜館 天王洲アイル店",
-  // "栄華楼 天王洲アイル店",
   "健康中華青蓮 天王洲スフィアタワー店",
-  // "栄華楼 天王洲アイル2号店",
   "朝霞刀削麺",
   "スパイス ラウンジ",
   "すぺっつぃえ 天王洲アイル店",
@@ -25,4 +31,18 @@ export const TENNOZ_RESTAURANTS = [
 ] as const;
 
 export type TennozRestaurant = (typeof TENNOZ_RESTAURANTS)[number];
+
+// 天王洲アイルエリアのキッチンカー
+export const TENNOZ_FOOD_TRUCKS = [
+  "天王洲キッチンカー A",
+  "天王洲キッチンカー B",
+  "天王洲キッチンカー C",
+  "天王洲キッチンカー D",
+  "天王洲キッチンカー E",
+] as const;
+
+export type TennozFoodTruck = (typeof TENNOZ_FOOD_TRUCKS)[number];
+
+// 統合型
+export type TennozLunchSpot = TennozRestaurant | TennozFoodTruck;
 

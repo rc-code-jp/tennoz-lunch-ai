@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import type { LunchType } from "@/types/lunch";
 
 type Recommendation = {
   name: string;
@@ -9,6 +10,7 @@ type Recommendation = {
   atmosphere: string;
   map: string;
   recommendedMenu: string;
+  lunchType: LunchType;
 };
 
 type RecommendationResponse = {
@@ -20,6 +22,7 @@ export default function Home() {
   const [name, setName] = useState("");
   const [mood, setMood] = useState("");
   const [weather, setWeather] = useState("");
+  const [lunchType, setLunchType] = useState<LunchType>("store");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RecommendationResponse | null>(null);
   const [error, setError] = useState("");
@@ -39,6 +42,21 @@ export default function Home() {
     { value: "晴れ", emoji: "☀️", color: "bg-yellow-100 hover:bg-yellow-200" },
     { value: "曇り", emoji: "☁️", color: "bg-gray-100 hover:bg-gray-200" },
     { value: "雨", emoji: "🌧️", color: "bg-blue-100 hover:bg-blue-200" },
+  ];
+
+  const lunchTypes = [
+    { 
+      value: 'store' as const, 
+      label: '店舗',
+      emoji: '🏪', 
+      color: 'bg-green-100 hover:bg-green-200' 
+    },
+    { 
+      value: 'food-truck' as const, 
+      label: 'キッチンカー',
+      emoji: '🚚', 
+      color: 'bg-orange-100 hover:bg-orange-200' 
+    },
   ];
 
   // クッキーから最終リクエスト日付を取得
@@ -155,7 +173,7 @@ export default function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, mood, weather }),
+        body: JSON.stringify({ name, mood, weather, lunchType }),
       });
 
       if (!response.ok) {
@@ -181,6 +199,7 @@ export default function Home() {
     setName("");
     setMood("");
     setWeather("");
+    setLunchType("store");
     setResult(null);
     setError("");
   };
@@ -269,6 +288,32 @@ export default function Home() {
               </div>
             </fieldset>
 
+            {/* ランチタイプ選択 */}
+            <fieldset>
+              <legend className="block text-xl font-semibold text-gray-800 mb-4">
+                ランチのタイプは？
+              </legend>
+              <div className="grid grid-cols-2 gap-3">
+                {lunchTypes.map((type) => (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => setLunchType(type.value)}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      lunchType === type.value
+                        ? "border-blue-500 bg-blue-50 scale-105"
+                        : "border-gray-200 hover:border-gray-300"
+                    } ${type.color}`}
+                  >
+                    <div className="text-3xl mb-2">{type.emoji}</div>
+                    <div className="text-sm font-medium text-gray-800">
+                      {type.label}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
             {/* 利用制限メッセージ */}
             {!canRequest && (
               <div className="p-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl">
@@ -299,7 +344,7 @@ export default function Home() {
               >
                 {loading ? "AIが考え中..." : canRequest ? "おすすめを教えて！" : "本日の利用回数に達しました"}
               </button>
-              {(name || mood || weather || result) && (
+              {(name || mood || weather || lunchType !== "store" || result) && (
                 <button
                   type="button"
                   onClick={handleReset}
@@ -354,9 +399,18 @@ export default function Home() {
                     <h3 className="text-2xl font-bold text-gray-800">
                       {result.recommendation.name}
                     </h3>
-                    <span className="px-4 py-2 bg-orange-500 text-white rounded-full text-sm font-bold shadow-md">
-                      {result.recommendation.cuisine}
-                    </span>
+                    <div className="flex flex-col gap-2 items-end">
+                      <span className="px-4 py-2 bg-orange-500 text-white rounded-full text-sm font-bold shadow-md">
+                        {result.recommendation.cuisine}
+                      </span>
+                      <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-md ${
+                        result.recommendation.lunchType === 'store' 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-orange-600 text-white'
+                      }`}>
+                        {result.recommendation.lunchType === 'store' ? '🏪 店舗' : '🚚 キッチンカー'}
+                      </span>
+                    </div>
                   </div>
                   
                   <div className="mb-4 p-4 bg-white rounded-lg border border-orange-200">

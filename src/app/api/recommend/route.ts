@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { TENNOZ_RESTAURANTS } from "@/constants/restaurants";
+import { TENNOZ_RESTAURANTS, TENNOZ_FOOD_TRUCKS, type LunchType } from "@/constants/restaurants";
 
 // システム指示（AIの役割とレストラン知識を事前に定義）
 const SYSTEM_INSTRUCTION = `あなたは天王洲アイルエリアのランチに詳しいグルメアドバイザーです。
@@ -20,13 +20,55 @@ function getRandomRestaurant(restaurants: readonly string[]): string {
   return restaurants[Math.floor(Math.random() * restaurants.length)];
 }
 
+// 指数バックオフでリトライを実行
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  initialDelay = 1000
+): Promise<T> {
+  let lastError: Error | unknown;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      
+      // 503エラー（過負荷）の場合のみリトライ
+      const is503Error = error instanceof Error && 
+        (error.message.includes("503") || 
+         error.message.includes("overloaded") ||
+         error.message.includes("UNAVAILABLE"));
+      
+      if (!is503Error || attempt === maxRetries - 1) {
+        throw error;
+      }
+      
+      // 指数バックオフ: 1秒、2秒、4秒...
+      const delay = initialDelay * Math.pow(2, attempt);
+      console.log(`API過負荷エラー。${delay}ms後にリトライします（試行 ${attempt + 1}/${maxRetries}）`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { name, mood, weather } = await request.json();
+    const { name, mood, weather, lunchType } = await request.json();
 
     if (!name || !mood || !weather) {
       return NextResponse.json(
         { error: "名前、気分、天気の情報が必要です" },
+        { status: 400 }
+      );
+    }
+
+    // lunchTypeのバリデーション
+    if (lunchType !== "store" && lunchType !== "food-truck") {
+      return NextResponse.json(
+        { error: "ランチタイプは'store'または'food-truck'である必要があります" },
         { status: 400 }
       );
     }
@@ -43,8 +85,11 @@ export async function POST(request: NextRequest) {
 
     const ai = new GoogleGenAI({ apiKey });
 
+    // lunchTypeに基づいてレストランリストを選択
+    const restaurantList = lunchType === "store" ? TENNOZ_RESTAURANTS : TENNOZ_FOOD_TRUCKS;
+    
     // ランダムにお店を選択
-    const selectedRestaurant = getRandomRestaurant(TENNOZ_RESTAURANTS);
+    const selectedRestaurant = getRandomRestaurant(restaurantList);
 
     // ユーザー固有の情報のみをプロンプトに（シンプル化）
     const prompt = `${selectedRestaurant}をおすすめして。
@@ -54,20 +99,23 @@ export async function POST(request: NextRequest) {
 {"recommendation":{"name":"${selectedRestaurant}","cuisine":"ジャンル","reason":"90文字以内","atmosphere":"50文字以内","recommendedMenu":"メニュー名"},"message":"こんにちは${name}さん！50文字以内"}`;
 
     // AIリクエスト（System Instruction + Google Search Grounding）
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        temperature: 0.5,
-        topP: 0.9,
-        maxOutputTokens: 2048,
-        tools: [
-          {
-            googleSearch: {},
-          },
-        ],
-      },
+    // 503エラー時は自動的にリトライ
+    const response = await retryWithBackoff(async () => {
+      return await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          temperature: 0.5,
+          topP: 0.9,
+          maxOutputTokens: 2048,
+          tools: [
+            {
+              googleSearch: {},
+            },
+          ],
+        },
+      });
     });
     
     const text = response.text || "";
@@ -120,10 +168,11 @@ export async function POST(request: NextRequest) {
     try {
       recommendation = JSON.parse(jsonText);
       
-      // mapのURLをサーバー側で追加（AIに生成させる必要なし）
+      // mapのURLとlunchTypeをサーバー側で追加
       if (recommendation && typeof recommendation === 'object' && 'recommendation' in recommendation) {
-        const rec = recommendation as { recommendation: { map?: string } };
+        const rec = recommendation as { recommendation: { map?: string; lunchType?: LunchType } };
         rec.recommendation.map = `https://www.google.com/maps/search/${encodeURIComponent(selectedRestaurant)}+天王洲アイル`;
+        rec.recommendation.lunchType = lunchType;
       }
     } catch (parseError) {
       console.error("JSON Parse Error:", parseError);
@@ -146,19 +195,30 @@ export async function POST(request: NextRequest) {
     // エラーの詳細を取得
     let errorMessage = "レコメンデーションの生成に失敗しました";
     let errorDetails = "";
+    let statusCode = 500;
     
     if (error instanceof Error) {
       errorMessage = error.message;
       errorDetails = error.stack || "";
+      
+      // 503エラーの場合は、ユーザーフレンドリーなメッセージを返す
+      if (errorMessage.includes("503") || 
+          errorMessage.includes("overloaded") || 
+          errorMessage.includes("UNAVAILABLE")) {
+        statusCode = 503;
+        errorMessage = "AIサービスが混雑しています。少し時間をおいてから再度お試しください。";
+      }
     }
     
     return NextResponse.json(
       { 
         error: errorMessage,
         details: errorDetails,
-        hint: "APIキーが正しく設定されているか、Gemini APIが利用可能か確認してください"
+        hint: statusCode === 503 
+          ? "数秒後に再度お試しください" 
+          : "APIキーが正しく設定されているか、Gemini APIが利用可能か確認してください"
       },
-      { status: 500 }
+      { status: statusCode }
     );
   }
 }
